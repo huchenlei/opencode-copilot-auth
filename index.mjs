@@ -27,6 +27,21 @@ export async function CopilotAuthPlugin({ client }) {
     "reasoning",
   ];
 
+  // File logger to avoid breaking TUI
+  async function logToFile(message) {
+    try {
+      const { appendFile } = await import("node:fs/promises");
+      const { homedir } = await import("node:os");
+      const { join } = await import("node:path");
+
+      const logPath = join(homedir(), ".copilot-auth.log");
+      const timestamp = new Date().toISOString();
+      await appendFile(logPath, `[${timestamp}] ${message}\n`);
+    } catch {
+      // Silently fail if logging fails
+    }
+  }
+
   function normalizeDomain(url) {
     return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
   }
@@ -610,7 +625,7 @@ export async function CopilotAuthPlugin({ client }) {
 
             // Progress callback for logging
             const onProgress = (msg) => {
-              console.log(`[Auth] ${msg}`);
+              logToFile(`[Auth] ${msg}`);
             };
 
             // Try each flow in order
@@ -651,7 +666,7 @@ export async function CopilotAuthPlugin({ client }) {
                 }
 
                 // Log fallback attempt
-                console.log(
+                logToFile(
                   `[Auth] ${flow.name} failed: ${error.message}. Trying next method...`,
                 );
                 continue;
